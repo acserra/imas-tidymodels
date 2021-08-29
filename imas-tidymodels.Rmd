@@ -247,7 +247,7 @@ ggplot(data = predicted_tests, aes(x = .pred, y = delta_13_c, colour = engine)) 
   geom_abline(slope = 1, linetype = 2) +
   facet_wrap(~engine) +
   theme_bw() +
-  guides(color = FALSE) +
+  guides(color = "none") +
   scale_color_brewer(palette = "Dark2")
 ```
 
