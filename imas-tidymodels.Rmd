@@ -13,11 +13,11 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 We're going to explore a data set containing information about penguins observed at Palmer Station, Antarctica. This data set and a lot of exploratory analysis can be found on the [original github repository](https://github.com/allisonhorst/palmerpenguins) and [this paper](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0090081) describes a lot of modeling work with this data. We'll also be using a lot of the packages from the [*tidyverse*](https://www.tidyverse.org/) and the [*tidymodels*](https://www.tidymodels.org/) meta-packages for data wrangling, preparation, modeling and machine learning. We'll use the *vip* and *fastshap* packages to do some model interpretation as well as couple of other packages that will make our lives easier along the way. Let's load them up. I'll try and use the *package::function* notation whenever we call a function so we can get a good feel for which functions belong to which package. The *package::* part is not not necessary, but it's a good habit to use it especially when different packages contain functions with the same name.
 
-```{r, include = FALSE}
+```{r install-packages, include = FALSE}
 source('./R/install_required_packages.R') #run this line to install the required packages
 ```
 
-```{r, warning=FALSE, message=FALSE}
+```{r load-packages, warning=FALSE, message=FALSE}
 library(palmerpenguins) #penguins data
 library(tidyverse) #wrangling
 library(tidymodels) #modeling and machine learning
@@ -39,12 +39,12 @@ penguins_raw <- palmerpenguins::penguins_raw
 
 And let's take a glimpse at the two datasets:
 
-```{r}
+```{r glimpse-penguins}
 dplyr::glimpse(penguins_raw)
 ```
 That all seems reasonable. We have 344 penguins and it looks like there's information on their body dimensions, species, region, island, some indication of a date, sex and some isotope ratios which were taken from blood samples. From the *glimpse* we can see if our variables are characters, dates, or numbers. We can also see that we have a few missing values. We're going to clean this dataframe up a little bit to make it easier to work with for exploratory analysis and visualising and then modelling later on. 
 
-```{r}
+```{r tidy-penguins}
 penguins_prepared <- penguins_raw %>%
   janitor::clean_names() %>%
   dplyr::select(c(species, island, date_egg, culmen_length_mm:delta_13_c_o_oo)) %>%
@@ -64,7 +64,7 @@ penguins_prepared <- penguins_raw %>%
 ```
 For our machine learning problem it will be fun to try and see if we can accurately predict the ratio of $\delta^{13}$C from the penguin blood samples (our 'delta_13_c' variable) given knowledge about where the penguins come from and some of their body dimensions. There's a lot of other options (e.g. predict species, predict sex, predict body mass, predict island), but these were either too easy or weren't the best example of showing different performances between different types of models. I'm an atmospheric scientist so not an expert, but I believe the $\delta^{13}$C isotope ratio can tell us about the dietary habits of our penguins. Anyway, let's start by just getting a feel for our dataset.
 
-```{r bodies, out.width="100%"}
+```{r visualise-bodies, out.width="100%"}
 
 #Long format is great for summarising and plotting
 penguins_prepared_long <- penguins_prepared %>%
@@ -87,7 +87,7 @@ ggplot(data = penguins_prepared_long %>%
 ```
 From this we can see that within species, males generally have larger bodies, bills and flippers. Gentoos are generally larger (except bill depth) and Adelies are the smallest. Let's have a quick look at the blood isotope ratios now:
 
-```{r, echo=FALSE, out.width="100%"}
+```{r visualise-isotopes, echo=FALSE, out.width="100%"}
 ggplot(data = penguins_prepared_long %>%
          dplyr::filter(variable == "delta_15_n" |
                          variable == "delta_13_c"), 
@@ -110,7 +110,7 @@ With our data set, let's try and come up with a predictive model to predict the 
 
 First up, let's use the *rsample* package to split our prepared data set into the training and testing sets. We'll use a random 2/3 for training and 1/3 for testing. If wanted to ensure that the proportion of a particular variable is preserved in both sets, you can set the *strata* argurment in the *initial_split* function (e.g. penguin species). By setting a random seed number we can ensure that we randomly split in the same way.
 
-```{r split}
+```{r split-sets}
 set.seed(222)
 penguins_split <- rsample::initial_split(penguins_prepared, prop = 2/3, strata = species)
 penguins_train <- rsample::training(penguins_split) #extract the training set from our split
@@ -121,7 +121,7 @@ penguins_test <- rsample::testing(penguins_split) #extract the testing set from 
 
 Next up we want to create a *recipe* for our modeling. This *recipe* will contain information on what we want to predict, the variables we're going to use to make out predictions (i.e. *features*), the data set we want to fit our model to, as well as any addition *steps* that we might want to apply to the data before modeling. There are *heaps* of these [steps](https://recipes.tidymodels.org/reference/index.html) (e.g. principal component analysis) you might want to apply to your data prior to modeling. We are going to normalise (i.e. center and scale) our numeric predictors, and we're going to create "dummy" variables for out nominal (categorical) variables (e.g. instead of having a column with species being adelie, chinstrap or gentoo, we'll have a column with a 1 or a 0 indicating if the penguin is chinstrap or not and another column with 1s or 0s indicating if the penguin is chinstrap or not etc). Some algorithms also require this for nominal variables. 
 
-```{r recipe}
+```{r define-recipe}
 penguins_recipe <- recipes::recipe(delta_13_c ~ 
                                      bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g + #numeric features
                                      sex + species + year + island, #nominal features (except year..)
@@ -132,7 +132,7 @@ penguins_recipe <- recipes::recipe(delta_13_c ~
 
 Now that we've specified our recipe and steps, we're going to create a *workflow* with the *workflows* package. Note that we still haven't specified what type of algorithm/model we actually want to fit yet, we're just setting everything up so we can specify as many of these as we want later with ease! For now we're just going to add our recipe to our workflow and later we can add our model with *add_model*, but we could easily do this all in one step later if we wanted.
 
-```{r workflow}
+```{r create-workflow}
 penguins_workflow <- workflows::workflow() %>%
   workflows::add_recipe(penguins_recipe)
 ```
@@ -217,14 +217,14 @@ predicted_tests <- purrr::map_dfr(fitted_models, predict_with_my_models)
 
 This *predicted_tests* dataframe contains all of our predictions for all of our models, just stiched together by row. There is a lot of repeated and redundant information here because we've included all of our predictors. If you're doing this on a larger dataset you might want to exclude the predictors to save on memory. If we have a *glimpse* at this dataframe we'll just see that it's the similar to our test set (just repeated for each model type), but has the addition of the *.pred* column and the *engine* column. Now we're ready to evaluate each model.
 
-```{r}
+```{r glimpse-predicted}
 glimpse(predicted_tests)
 ```
 ### Evaluating our models
 
 The reason we added all of our predictions from all of our models into a single dataframe is because it becomes incredibly easy to evaluate all of our models thanks to the *group_by* function from *dplyr*. To do the actually evaluation, we'll use the *metrics* function from the *tidymodels* *yardstick* package. The *metrics* function is fairly smart and will try and identify what type of prediction you've made (e.g. numeric or class) and use some default metrics, but you can also specify [other metrics](https://yardstick.tidymodels.org/articles/metric-types.html) you'd like.
 
-```{r metrics}
+```{r collect-metrics}
 predicted_test_metrics <- predicted_tests %>%
   dplyr::group_by(engine) %>%
   yardstick::metrics(., truth = delta_13_c, estimate = .pred)
@@ -241,7 +241,7 @@ ggplot(data = predicted_test_metrics, aes(x = engine, y = .estimate, colour = en
 ```
 Let's also just check the scatterplots to get a better feeling for our predictions.
 
-```{r scatter, out.width="100%"}
+```{r scatter-metrics, out.width="100%"}
 ggplot(data = predicted_tests, aes(x = .pred, y = delta_13_c, colour = engine)) +
   geom_point() +
   geom_abline(slope = 1, linetype = 2) +
@@ -275,7 +275,7 @@ tune_specification_random_forest <- parsnip::rand_forest(
 
 Let's now create a new *workflow* that will include our tuning procedure, still using the same *recipe* that we defined earlier.
 
-```{r}
+```{r tune-workflow}
 tuning_workflow_random_forest <- workflow() %>%
   add_recipe(penguins_recipe) %>%
   add_model(tune_specification_random_forest)
@@ -283,7 +283,7 @@ tuning_workflow_random_forest <- workflow() %>%
 
 Now we're going to specify what combination of hyperparameters we want to explore. We'll do this with the *dials* package using the *grid_regular* function. 
 
-```{r}
+```{r hyperparameter-grid}
 hyperparameter_grid_random_forest <- dials::grid_regular(
   mtry(range = c(1,11)),
   min_n(range = c(1,30)),
@@ -297,14 +297,14 @@ We can see that we have 9 different combinations of hyperparameters. You can pla
 
 Now we want to see which combination of hyperparameters will perform the best. To do that, we're going to using cross-validation with the *vfold_cv* function from the *rsample* package. This is also sometimes called *n-fold cross-validation* or *k-fold cross-validation*. The data is split evenly into *v* number of folds. The model is then trained on *v-1* number of folds and tested on the remaining fold. This whole process is then repeated giving every fold a chance to be the validation set. This whole process can also be repeated any number of times with different splits. It is common for *v* to either be 3, 5 or 10. This is all done due to the fact that the trained model and it's performance will depend on what data goes into the training and testing sets. Cross-validation is an extremely important step in robustly and fairly evaluating the performance of your model and to ensure you are not over or under-fitting. Other methods such as *bootsrapping* (https://rsample.tidymodels.org/reference/bootstraps.html) exist. In this exercise though we will do 3-fold cross validation and repeat the whole process three times.
 
-```{r}
+```{r create-vfolds}
 set.seed(222)
 penguins_train_folds <- rsample::vfold_cv(penguins_train, v = 3, repeats = 3)
 ```
 
 Now comes the time consuming part. We're going to build models using every combination of hyperparameter using 3-fold cross-validation and then repeat that whole process three times. We'll do this using the *tune_grid* function from the *tune* package. For this we want to specify our *workflow*, which resamples (i.e. folds) to tune and validate with, our grid of hyperparameters and then (optionally) the metrics we want to collect from all our validations. I've prepared some results already using a much larger number of hyperparameter combinations which we'll load in, but feel free to uncomment the code I used to run it yourself (should take about a minute).
 
-```{r}
+```{r tune-vfolds}
 # set.seed(333)
 # tictoc::tic()
 # tuning_results_random_forest <- tune::tune_grid(
@@ -320,7 +320,7 @@ tuning_results_random_forest <- readRDS('./data/processed/penguins_tuning_result
 ```
 Now let's extract out the metrics from all of our tuning results and do some reshaping of the data to make it easier to plot.
 
-```{r, out.width = "100%"}
+```{r tune-metrics, out.width = "100%"}
 collected_metrics_random_forest <- tuning_results_random_forest  %>%
   collect_metrics() %>%
   tidyr::pivot_longer(-c(.metric:.config),
@@ -346,7 +346,7 @@ This nicely shows how the performance of our models vary with different hyperpar
 
 We'll then finalize our model specification and fit that to the *entire* training set and again use our fitted model to predict out *penguins_test* testing set.
 
-```{r}
+```{r finalise-model}
 best_rmse <- tune::select_best(tuning_results_random_forest, "rmse")
 
 my_tuned_model_random_forest <- tune::finalize_model(
@@ -365,14 +365,14 @@ my_predicted_test_random_forest <- predict(my_fitted_model_random_forest, new_da
 
 Now let's see how well our final model did on our testing set:
 
-```{r}
+```{r metrics-best}
 yardstick::metrics(my_predicted_test_random_forest, truth = delta_13_c, estimate = .pred)
 
 ```
 
 Did we make any improvements compared to just the default values from our earlier analysis?
 
-```{r}
+```{r metrics-default}
 yardstick::metrics(predicted_tests %>% filter(engine == "ranger"), truth = delta_13_c, estimate = .pred)
 ```
 
@@ -382,7 +382,7 @@ Yes! We've achieved lower error values and higher r-squared values thanks to our
 
 Building a model is not always about making predictions, and even when it is you want to make sure that it is making predictions for the right reasons. Determining how important each of your predictors are deserves a whole session of it's own but we'll quickly have a look at some common tools and I'll mention a new tool that I would encourage everyone to use called SHAP (SHapley Additive exPlanations). Let's use the *vip* package to plot a *variable importance plot* using the *permutation* method (I slipped this into our model specification earlier). 
 
-```{r, out.width = "100%"}
+```{r vip, out.width = "100%"}
 my_fitted_model_random_forest %>%
   extract_fit_parsnip() %>%
   vip::vip() +
@@ -391,7 +391,7 @@ my_fitted_model_random_forest %>%
 This tells us that two variables seem to be the most important for our prediction of delta-13 C: whether or not the penguin is a Chinstrap or not and what year the data was collected. Let's see if this at least makes sense. Because we applied a few steps in our *recipe*, we want to create a dataframe that applies these steps. We'll do this using the *prep* and *juice* functions from the *recipes*, and then create a correlation plot using *ggcorrplot*.
 
 
-```{r, out.width = "100%"}
+```{r corrplot, out.width = "100%"}
 penguins_recipe_juiced <- penguins_recipe %>%
                    recipes::prep() %>%
                    recipes::juice()
@@ -412,7 +412,7 @@ In short, SHAP values are calculated for every feature for every observation and
 
 While not integrated into *tidymodels* and it is much better supported in python, the *fastshap* package in R is a good tool although does require some development and trial and error with coding. The *fastshap* package is *fast* because it approximates the SHAP values by not considering *every* permutation of feature inclusions, but by running a number of simulations you can approach the "exact" SHAP values. The input for the SHAP calculations requires a matrix, so let's produce that:
 
-```{r}
+```{r shapmatrix}
 matrix_for_shap <- penguins_recipe %>%
   recipes::prep() %>%
   recipes::juice() %>%
@@ -422,7 +422,7 @@ matrix_for_shap <- penguins_recipe %>%
 
 We also need to define something called a prediction wrapper. We also need to specify our fitted model object. This is not overly intuitive and took me some time to figure out unfortunately.
 
-```{r}
+```{r shap-prep}
 pfun <- function(object, newdata) {
   predict(object, data = newdata)$predictions
 }
@@ -434,7 +434,7 @@ fitted_model_object <- my_fitted_model_random_forest %>%
 
 Now we will use the *explain* function from the *fastshap* package to calculate the SHAP values for our training set and do 100 simulations.
 
-```{r}
+```{r calculate-shap}
 tictoc::tic()
 shap_n100 <- fastshap::explain(fitted_model_object$fit, 
                              X = matrix_for_shap, 
@@ -444,19 +444,19 @@ tictoc::toc()
 ```
 This creates a dataframe with the same shape as our training set, where each row corresponds to an observation (i.e. penguin) and each column is the SHAP value for each feature (i.e. how much knowledge of that feature changed out prediction of delta-13 C for that penguin). Let's use the *autoplot* function to visualise the global importance. 
 
-```{r, out.width = "100%"}
+```{r plot-shap-global, out.width = "100%"}
 autoplot(shap_n100) +
   theme_bw()
 ```
 This is not too different from our default permutation-based variable importance plot from earlier, except we know that these values weren't calculated with "fake" penguins and that the values are in the same units as out delta-13 C variable!. Let's take a look at the SHAP values for the first penguin in our training data set:
 
-```{r, out.width = "100%"}
+```{r plot-shap-single, out.width = "100%"}
 autoplot(shap_n100, type ="contribution", row_num = 1) +
   theme_bw()
 ```
 By itself this is a bit meaningless (especially for an atmospheric scientist), but the possibilities to really understand your model and your data with this are quite powerful. For example you could aggregate SHAP values for different groups (region, sex, species) or for "good" or "bad" predictions. For one last example, let's look at a dependence plot to see how much flipper length influences our prediction of delta-13 C:
 
-```{r, out.width = "100%"}
+```{r shap-dependence, out.width = "100%"}
 autoplot(shap_n100, 
          type = "dependence", 
          feature = "flipper_length_mm", 
@@ -466,7 +466,7 @@ autoplot(shap_n100,
 ```
 Remembering that our we normalised our numeric features in our recipe, this tells us that (more precisely: our model predicts that) penguins with longer flippers have slightly lower delta-C 13 ratios. What if we explored this with our original data?
 
-```{r, out.width="100%"}
+```{r flipper-delta13c, out.width="100%"}
 ggplot(data = penguins_train, aes(x = flipper_length_mm, y = delta_13_c)) +
   geom_point() +
   theme_bw()
