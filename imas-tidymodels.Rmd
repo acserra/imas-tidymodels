@@ -21,7 +21,6 @@ source('./R/install_required_packages.R') #run this line to install the required
 library(palmerpenguins) #penguins data
 library(tidyverse) #wrangling
 library(tidymodels) #modeling and machine learning
-library(ranger) #random forests
 library(vip) #variable importance
 library(fastshap) #SHapley Additive exPlanations
 library(janitor) #cleaning variable names
