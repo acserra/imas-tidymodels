@@ -2007,7 +2007,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <span id="cb36-4"><a href="#cb36-4"></a>                             <span class="dt">pred_wrapper =</span> pfun, </span>
 <span id="cb36-5"><a href="#cb36-5"></a>                             <span class="dt">nsim =</span> <span class="dv">100</span>)</span>
 <span id="cb36-6"><a href="#cb36-6"></a>tictoc<span class="op">::</span><span class="kw">toc</span>()</span></code></pre></div>
-<pre><code>## 7.54 sec elapsed</code></pre>
+<pre><code>## 9 sec elapsed</code></pre>
 <p>This creates a dataframe with the same shape as our training set, where each row corresponds to an observation (i.e. penguin) and each column is the SHAP value for each feature (i.e. how much knowledge of that feature changed out prediction of delta-13 C for that penguin). Let’s use the <em>autoplot</em> function to visualise the global importance.</p>
 <div class="sourceCode" id="cb38"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1"></a><span class="kw">autoplot</span>(shap_n100) <span class="op">+</span></span>
 <span id="cb38-2"><a href="#cb38-2"></a><span class="st">  </span><span class="kw">theme_bw</span>()</span></code></pre></div>
