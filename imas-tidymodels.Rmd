@@ -156,10 +156,6 @@ model_specifications$random_forest_specification <- parsnip::rand_forest() %>%
   set_mode("regression") %>%
   set_engine("ranger", importance = "permutation") #we'll discuss this later.
 
-model_specifications$boosted_tree_specification <- parsnip::boost_tree() %>%
-  set_mode("regression") %>%
-  set_engine("xgboost")
-
 model_specifications$svm_poly_specification <- parsnip::svm_poly() %>%
   set_mode("regression") %>%
   set_engine("kernlab")
@@ -167,6 +163,11 @@ model_specifications$svm_poly_specification <- parsnip::svm_poly() %>%
 model_specifications$mars_specification <- parsnip::mars() %>%
   set_mode("regression") %>%
   set_engine("earth")
+
+###BONUS###
+#model_specifications$boosted_tree_specification <- parsnip::????() %>%
+#  set_mode("regression") %>%
+#  set_engine("????")
 ```
 
 For each of the models that we've selected, we're just using the default set-up, but each of them have many options for specifying each of their own *hyperparameters*, which will depend on the model type. If you follow a link for any of the model types on the parsnip website you can see exactly what these hyperparameters are (e.g. *penalty* and *mixture* for [linear regression](https://parsnip.tidymodels.org/reference/linear_reg.html)). In this exercise we will only explore tuning these hyperparameters for the model type that looks most promising based on the default parameters, but in reality you might want to tune the hyperparameters for all the model types you're interested in.
@@ -251,7 +252,7 @@ ggplot(data = predicted_tests, aes(x = .pred, y = delta_13_c, colour = engine)) 
   scale_color_brewer(palette = "Dark2")
 ```
 
-We can see that there is some pretty dramatic differences in performance across our different models. The default *support vector machine* model (with the *kernlab* engine) seemed to have the worst performance with the largest errors and lowest r-squared value, followed closely by our linear regression model (*lm* engine). The three models based on using decision trees (i.e. random forest, single decision tree and XGBoost using the *ranger*, *rpart* and *xgboost* engines, respectively) performed the best using just the default model set ups. This is not always going to be the case, which is why it's important to test different models. For our case, because the random forest model (*ranger* engine) had a pretty good performance, we're going to work with it a bit more and see if we can squeeze some extra performance out of it with some hyperparameter tuning. In reality, *all* of these models can be tuned and just because the default set up of one model type performs worse than another doesn't mean that it is necessarily the sub-optimal choice of model. Some models (e.g. XGBoost) are able to achieve a very good performance in a variety of applications, but are more difficult to tune. Anyway, for our exercise let's just focus on one model type for our tuning.
+We can see that there is some pretty dramatic differences in performance across our different models. The default *support vector machine* model (with the *kernlab* engine) seemed to have the worst performance with the largest errors and lowest r-squared value, followed closely by our linear regression model (*lm* engine). The three models based on using decision trees (i.e. random forest and single decision tree using the *ranger* and *rpart* engines, respectively) performed the best using just the default model set ups. This is not always going to be the case, which is why it's important to test different models. For our case, because the random forest model (*ranger* engine) had a pretty good performance, we're going to work with it a bit more and see if we can squeeze some extra performance out of it with some hyperparameter tuning. In reality, *all* of these models can be tuned and just because the default set up of one model type performs worse than another doesn't mean that it is necessarily the sub-optimal choice of model. Some models (e.g. XGBoost) are able to achieve a very good performance in a variety of applications, but are more difficult to tune. Feel free to go back and add the model specification in for XGBoost and see how it compares. Anyway, for our exercise let's just focus on one model type for our tuning.
 
 ## Tuning and cross-validation
 

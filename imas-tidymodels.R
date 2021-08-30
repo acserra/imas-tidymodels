@@ -117,10 +117,6 @@ model_specifications$random_forest_specification <- parsnip::rand_forest() %>%
   set_mode("regression") %>%
   set_engine("ranger", importance = "permutation") #we'll discuss this later.
 
-model_specifications$boosted_tree_specification <- parsnip::boost_tree() %>%
-  set_mode("regression") %>%
-  set_engine("xgboost")
-
 model_specifications$svm_poly_specification <- parsnip::svm_poly() %>%
   set_mode("regression") %>%
   set_engine("kernlab")
@@ -128,6 +124,11 @@ model_specifications$svm_poly_specification <- parsnip::svm_poly() %>%
 model_specifications$mars_specification <- parsnip::mars() %>%
   set_mode("regression") %>%
   set_engine("earth")
+
+###BONUS###
+#model_specifications$boosted_tree_specification <- parsnip::????() %>%
+#  set_mode("regression") %>%
+#  set_engine("????")
 
 
 ## ----define-fit--------------------------------------------------------------------------------------------------------------------------------------------
